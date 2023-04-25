@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	databaseURL = "postgres://user:admin@localhost:5432/promotions_db?sslmode=disable"
-	period      = 30
+	databaseURL = "postgres://user:admin@db:5432/promotions_db?sslmode=disable"
+	interval    = 30
 )
 
 type Promotion struct {
@@ -35,6 +35,7 @@ func main() {
 		log.Fatal("error connecting to the database: ", err)
 	}
 	defer db.Close()
+	log.Println("Successfully connected to database!")
 
 	// Create a table to store the records if it does not exist
 	log.Println("Creating table if not exists...")
@@ -51,15 +52,14 @@ func main() {
 		log.Fatalf("error reading promotions from CSV:%v", err)
 	}
 
-	// Clear the existing records from the database
 	log.Println("Truncating table before inserting new data...")
 	if _, err := db.Exec("TRUNCATE TABLE promotions"); err != nil {
 		log.Fatalf("error in db:%v", err)
 	}
 
-	// Insert promotions to database in batches
 	log.Println("Starting to insert CSV file data to DB")
 
+	// Insert promotions to database in batches
 	batchSize := 1000
 	for i := 0; i < len(promotions); i += batchSize {
 		end := i + batchSize
@@ -73,23 +73,19 @@ func main() {
 	}
 	log.Println("Data inserted!")
 
-	// Clear the existing records from the database
-	//go truncatePromotionsTable(db, period*time.Minute)
-
 	go func() {
-		time.Sleep(30 * time.Second)
+		time.Sleep(interval * time.Minute)
+		log.Println("Starting to read csv file and update DB data")
 		for {
 			insertNewDataEachN_Min(db, err)
 			if err != nil {
 				log.Printf("error truncating promotions table: %v", err)
 			}
-			time.Sleep(period * time.Minute)
+			time.Sleep(interval * time.Minute)
 		}
 	}()
 
 	// Start the HTTP server
-	// Expose an HTTP endpoint to handle incoming requests
-	// Call handleRequests function
 	handleRequests(db)
 
 }
@@ -148,6 +144,7 @@ func insertNewDataEachN_Min(db *sql.DB, err error) {
 	if err != nil {
 		return
 	}
+	log.Println("Promotion table truncated")
 	updatedFile := openCSV(err)
 	promotionsFromCSV, err := readPromotionsFromCSV(updatedFile.Name())
 	if err != nil {
@@ -157,7 +154,7 @@ func insertNewDataEachN_Min(db *sql.DB, err error) {
 	if err != nil {
 		log.Printf("error inserting promotions: %v", err)
 	}
-	log.Println("New CSV file inserted")
+	log.Println("New CSV file inserted!")
 
 }
 func readPromotionsFromCSV(filename string) ([]Promotion, error) {
@@ -170,9 +167,8 @@ func readPromotionsFromCSV(filename string) ([]Promotion, error) {
 	defer file.Close()
 
 	reader := csv.NewReader(file)
-	// Set the delimiter to a comma
+	// Set the delimiter
 	reader.Comma = ','
-	// Skip the header row
 	reader.Read()
 
 	for {
@@ -186,7 +182,7 @@ func readPromotionsFromCSV(filename string) ([]Promotion, error) {
 
 		id := record[0]
 
-		// Multiple date formats for parse the expiration date
+		// multiple date formats for parse the expiration date
 		var expirationDate time.Time
 		for _, dateFormat := range []string{"2006-01-02 15:04:05 -0700 MST", time.RFC3339} {
 			expirationDate, err = time.Parse(dateFormat, record[2])
@@ -238,7 +234,6 @@ func handleRequests(db *sql.DB) {
 			return
 		}
 
-		// Call the getPromotionByID function to retrieve the promotion
 		promotion, err := getPromotionByID(db, id)
 		if err != nil {
 			if err == sql.ErrNoRows {
@@ -249,7 +244,6 @@ func handleRequests(db *sql.DB) {
 			return
 		}
 
-		// Serialize the promotion to JSON and write it to the response
 		response, err := json.Marshal(promotion)
 		if err != nil {
 			http.Error(w, "Error serializing promotion", http.StatusInternalServerError)
@@ -262,7 +256,7 @@ func handleRequests(db *sql.DB) {
 	log.Fatal(http.ListenAndServe(":1321", nil))
 }
 
-// retrieves a promotion from the database by ID
+// retrieves a promotion from db by ID
 func getPromotionByID(db *sql.DB, id string) (*Promotion, error) {
 	var promotion Promotion
 	err := db.QueryRow("SELECT id, price, expiration_date FROM promotions WHERE id = $1", id).Scan(

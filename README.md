@@ -1,7 +1,6 @@
 Application reading CSV file from main director (from attached file size I decide to locate it inside project not send by http request)
-for saving file data I choose PostgresSQL because I'm more experienced with relational db's especially ORACLE and PostgresSQL.
+for saving file data I choose PostgresSQL because I'm more experienced with relational db's especially Oracle and PostgresSQL.
 It's my first experience with Go, so I tried my best :)
-
 ● The .csv file could be very big (billions of entries) - how would your application
 perform?
 I think use a distributed architecture and splitting the CSV file into smaller chunks, and processing them in parallel on multiple machines. 
@@ -23,4 +22,4 @@ Use a load balancer to distribute incoming traffic across multiple instances of 
 configure auto-scaling rules to automatically add or remove instances based on CPU utilization, memory usage, or other metrics.
 Set up monitoring and alerting to detect issues before they become critical.
 This could include using tools like Prometheus, Grafana to monitor metrics like CPU usage,
-memory usage, and HTTP response times, also use ELK for centralized logging
+memory usage, and HTTP response times, also use ELK for centralized logging.

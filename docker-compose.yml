@@ -1,8 +1,24 @@
 version: "3.8"
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "1321:1321"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=admin
+      - DB_NAME=promotions_db
+    depends_on:
+      - db
+    links:
+      - db
   db:
     image: postgres
-    container_name: local_pgdb
+    container_name: pgdb
     restart: always
     ports:
       - "5432:5432"
@@ -10,10 +26,11 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: admin
     volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
       - local_pgdata:/var/lib/postgresql/data
   pgadmin:
     image: dpage/pgadmin4
-    container_name: pgadmin4_container
+    container_name: pgadmin4_cont
     restart: always
     ports:
       - "5050:80"
